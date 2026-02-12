@@ -4,7 +4,7 @@ Arduino driven device to roll up to 12 drink cans in unison for filming purposes
 
 ## Hardware
 
-- 1 x Arduino CNC shield v3 with A4988/DRV8825 motor drivers
+- 1 x Arduino CNC shield v3 with DRV8825 motor drivers
 - 1 x Elegoo Uno R3
 - 2 x HANPOSE 17HS4401-S 40mm Nema 17 Stepper Motor 42 Motor 42BYGH 1.7A 40N.cm 4-lead Motor
 - 2 x GT2 2mm Pitch 6mm Width Closed Loop Synchronous Timing Belt 750 teeth 1500mm
@@ -23,6 +23,7 @@ Arduino driven device to roll up to 12 drink cans in unison for filming purposes
 <img width="1038" alt="CNC Shield v3" src="https://europe1.discourse-cdn.com/arduino/original/4X/c/f/9/cf988326f7e0baaa42da84e9b4440201e97f966a.jpeg" />
 
 ## Power & step config
+
 12V: 1/8 micro-stepping
 Set jumpers MS1 ON, MS2 ON, MS3 OFF → 1600 steps/rev
 
@@ -52,6 +53,7 @@ So:
 
 
 ## Pulley Specs
+
 20T pulley
 Belt per rev: 40 mm
 
