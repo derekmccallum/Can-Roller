@@ -20,4 +20,4 @@ Arduino driven device to roll up to 12 drink cans in unison for filming purposes
 | SPEED pot | A2 | Read once at start, sets cruise step rate (no mid-run updates) | 5V → end, A2 → wiper, GND → other end |
 | RUNTIME pot | A3 | Read once at start, sets run time (no mid-run updates) | 5V → end, A3 → wiper, GND → other end |
 
-<img width="1038" alt="Can-Roller Hardware" src="https://github.com/user-attachments/assets/e6c2bad5-db18-4510-8bad-494698126975" />
+<img width="1038" alt="CNC Shield v3" src="[https://europe1.discourse-cdn.com/arduino/original/4X/c/f/9/cf988326f7e0baaa42da84e9b4440201e97f966a.jpeg]" />
