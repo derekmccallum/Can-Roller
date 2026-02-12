@@ -21,3 +21,58 @@ Arduino driven device to roll up to 12 drink cans in unison for filming purposes
 | RUNTIME pot | A3 | Read once at start, sets run time (no mid-run updates) | 5V → end, A3 → wiper, GND → other end |
 
 <img width="1038" alt="CNC Shield v3" src="https://europe1.discourse-cdn.com/arduino/original/4X/c/f/9/cf988326f7e0baaa42da84e9b4440201e97f966a.jpeg" />
+
+## Power & step config
+12V: 1/8 micro-stepping
+Set jumpers MS1 ON, MS2 ON, MS3 OFF → 1600 steps/rev
+
+	• DRV8825 @ 1/8 microstepping ⇒ 1600 steps/rev (200 × 8)
+	• Can diameter ≈ 66 mm ⇒ circumference C ≈ 207.35 mm
+	• GT2 pitch = 2 mm ⇒ belt travel per motor rev = 2 × teeth (mm)
+	• Ideal no-slip rolling (and cans are constrained from translating)
+
+Motor speed from step rate (independent of pulley teeth):
+	• At 1000 steps/s: motor = 1000/1600 = 0.625 rps
+	• At 9500 steps/s: motor = 9500/1600 = 5.9375 rps
+
+Belt speed = motor_rps × (2×teeth)
+Can speed (rev/s) = belt_speed / 207.35
+ 
+A slave to X
+	• Place a jumper on A → X
+
+This electrically connects:
+	• A_STEP → X_STEP
+	• A_DIR  → X_DIR
+
+So:
+	• Both motors receive the same STEP and DIR signals
+	• Arduino code only needs to drive X
+	• A direction reversed owing to mounting
+
+
+## Pulley Specs
+20T pulley
+Belt per rev: 40 mm
+
+	• 1000 steps/s
+		○ Belt speed: 0.625 × 40 = 25.0 mm/s
+		○ Can speed: 25.0 / 207.35 = 0.1206 rps = 7.23 RPM
+		○ Time per turn: 8.29 s/rev
+	• 9500 steps/s
+		○ Belt speed: 5.9375 × 40 = 237.5 mm/s
+		○ Can speed: 237.5 / 207.35 = 1.1454 rps = 68.73 RPM
+		○ Time per turn: 0.873 s/rev
+
+24T pulley
+Belt per rev: 48 mm
+
+	• 1000 steps/s
+		○ Belt speed: 0.625 × 48 = 30.0 mm/s
+		○ Can speed: 30.0 / 207.35 = 0.1447 rps = 8.68 RPM
+		○ Time per turn: 6.91 s/rev
+	• 9500 steps/s
+		○ Belt speed: 5.9375 × 48 = 285.0 mm/s
+		○ Can speed: 285.0 / 207.35 = 1.3745 rps = 82.47 RPM
+		○ Time per turn: 0.728 s/rev
+
