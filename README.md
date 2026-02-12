@@ -15,9 +15,9 @@ Arduino driven device to roll up to 12 drink cans in unison for filming purposes
 
 | Feature | IO Pin | Description | Wiring |
 |---------|--------|-------------|--------|
-| START button | A0 | If idle: start run (planned 5s total)<br>If running: cancel and ramp down smoothly from current speed, then stop | Buttons wired to GND, use INPUT_PULLUP (pressed = LOW) |
+| START button | A0 | If idle: start run (planned 5s total). If running: cancel and ramp down smoothly from current speed, then stop | Buttons wired to GND, use INPUT_PULLUP (pressed = LOW) |
 | REVERSE button | A1 | Toggles direction for NEXT run only | Buttons wired to GND, use INPUT_PULLUP (pressed = LOW) |
-| SPEED pot | A2 | Read once at start, sets cruise step rate (no mid-run updates) | 5V → end<br>A2 → wiper<br>GND → other end |
-| RUNTIME pot | A3 | Read once at start, sets run time (no mid-run updates) | 5V → end<br>A3 → wiper<br>GND → other end |
+| SPEED pot | A2 | Read once at start, sets cruise step rate (no mid-run updates) | 5V → end, A2 → wiper, GND → other end |
+| RUNTIME pot | A3 | Read once at start, sets run time (no mid-run updates) | 5V → end, A3 → wiper, GND → other end |
 
-![Can-Roller Hardware](https://github.com/user-attachments/assets/e6c2bad5-db18-4510-8bad-494698126975)
+<img width="1038" alt="Can-Roller Hardware" src="https://github.com/user-attachments/assets/e6c2bad5-db18-4510-8bad-494698126975" />
