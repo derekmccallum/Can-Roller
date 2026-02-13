@@ -21,18 +21,9 @@ Arduino driven device to roll up to 12 drink cans in unison for filming purposes
 | RUNTIME pot | v2 | A3 | Read once at start, sets run time (no mid-run updates) | 5V → end, A3 → wiper, GND → other end |
 
 ## File Versions
-
 | File | Version | Description |
 |--------------|---|--------------------|
-| can-roller.ini | v1 |   UNO + CNC Shield V3 + (2x) DRV8825
-  - START button (A0):
-      * if idle: start run (according to set runtime)
-      * if running: cancel and ramp down smoothly from CURRENT speed, then stop
-  - REVERSE button (A1): toggles direction for NEXT run only
-  - SPEED pot (A2): read once at start, sets cruise steps/sec (no mid-run updates)
-  - Soft start/stop: 0.5s ramp up / 0.5s ramp down
-  - DDS/phase-accumulator stepping (smooth, low jitter)
-  Buttons wired to GND, using INPUT_PULLUP (pressed = LOW) |
+| can-roller.ini | v1 | UNO + CNC Shield V3 + (2x) DRV8825<br>- START button (A0):<br>&nbsp;&nbsp;&nbsp;&nbsp;* if idle: start run (according to set runtime)<br>&nbsp;&nbsp;&nbsp;&nbsp;* if running: cancel and ramp down smoothly from CURRENT speed, then stop<br>- REVERSE button (A1): toggles direction for NEXT run only<br>- SPEED pot (A2): read once at start, sets cruise steps/sec (no mid-run updates)<br>- Soft start/stop: 0.5s ramp up / 0.5s ramp down<br>- DDS/phase-accumulator stepping (smooth, low jitter)<br>Buttons wired to GND, using INPUT_PULLUP (pressed = LOW) |
 
 <img width="1038" alt="CNC Shield v3" src="https://europe1.discourse-cdn.com/arduino/original/4X/c/f/9/cf988326f7e0baaa42da84e9b4440201e97f966a.jpeg" />
 
