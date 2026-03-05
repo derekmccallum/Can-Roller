@@ -151,6 +151,7 @@ Hardware fix for noisy analog potentiometer.
 3. Other leg of 100nF capacitor → GND<br>
 
 The junction point (where the resistor, Ax, and capacitor meet) is key - that's where the filtered signal sits.
+![Pot Filter Circuit](pot-filter.png)
 
 ### Why This Works:
 • The capacitor forms a low-pass filter that removes high-frequency electrical noise<br>
