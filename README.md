@@ -57,7 +57,7 @@ So:
 	• Arduino code only needs to drive X
 	• A direction reversed owing to mounting
 
-## DRV8825 Current Setting Documentation
+## DRV8825 Current Setting
 ### Configuration:
 #### Stepper Motor: HANPOSE 17HS4401-S
 • Rated Current: 1.7A per phase<br>
@@ -139,6 +139,37 @@ After running for 5-10 minutes, motors should be:<br>
 • Too hot to hold: Too high (>70°C) - reduce current<br>
 
 Your 0.7V setting should keep motors comfortably warm, not hot.
+
+## Potentiometer Filter
+Hardware fix for noisy analog potentiometer.
+
+### Connection order:
+1. Pot wiper → one leg of 1kΩ resistor<br>
+2. Other leg of 1kΩ resistor → splits to:<br>
+   • Arduino pin A2 / A3<br>
+   • One leg of 100nF capacitor<br>
+3. Other leg of 100nF capacitor → GND<br>
+
+The junction point (where the resistor, Ax, and capacitor meet) is key - that's where the filtered signal sits.
+
+### Why This Works:
+• The capacitor forms a low-pass filter that removes high-frequency electrical noise<br>
+• Your code already averages 10 samples, so the capacitor won't make the response too sluggish<br>
+• Ceramic caps are non-polarized, so orientation doesn't matter<br>
+
+### What's the Point of the 1kΩ Resistor?
+• Creates a Proper Low-Pass Filter:<br>
+• The resistor + capacitor form an RC low-pass filter with a specific cutoff frequency:<br>
+• Cutoff frequency = 1 / (2π × R × C)<br>
+
+### With 1kΩ and 100nF: ~1.6 kHz cutoff
+This blocks noise above 1.6 kHz while passing your slow pot movements
+
+### Why It's Better Than Capacitor Alone:
+Prevents ADC Input Loading: The capacitor directly on the ADC input can cause issues because the Arduino's ADC has internal resistance (~10kΩ). The 1kΩ resistor isolates this.<br>
+More Predictable Filtering: Without the resistor, the filter behavior depends on the pot position (pot resistance varies as you turn it). The 1kΩ makes filtering consistent.<br>
+Reduces High-Frequency Noise: The resistor limits current spikes when the cap charges/discharges, providing cleaner filtering.<br>
+
 
 ## Pulley Specs
 
