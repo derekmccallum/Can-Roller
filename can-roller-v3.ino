@@ -8,7 +8,7 @@
   - RUNTIME pot (A3): read once at start, sets run duration 3-10 seconds
   - Soft start/stop: 0.5s ramp up / 0.5s ramp down
   - DDS/phase-accumulator stepping (smooth, low jitter)
-  - Real-time speed adjustment with noise filtering
+  - Real-time speed adjustment with non-blocking reads
 
   Buttons wired to GND, using INPUT_PULLUP (pressed = LOW)
 */
@@ -40,12 +40,12 @@ const uint32_t MAX_RUNTIME_MS = 10000;  // 10 seconds
 const uint16_t POT_MIN_STEPS_PER_SEC = 1000;
 const uint16_t POT_MAX_STEPS_PER_SEC = 9500;
 
-// Real-time speed reading
-const uint16_t SPEED_READ_INTERVAL_MS = 50;  // Read pot every 50ms
-const uint8_t SPEED_FILTER_SAMPLES = 5;      // Moving average window
+// Real-time speed reading - NON-BLOCKING
+const uint16_t SPEED_READ_INTERVAL_MS = 100;  // Read pot every 100ms
+const uint8_t SPEED_FILTER_SAMPLES = 8;       // Moving average window
 
 // Speed change rate limiting (steps/sec per second)
-const uint16_t MAX_SPEED_CHANGE_RATE = 2000; // Max 2000 steps/sec change per second
+const uint16_t MAX_SPEED_CHANGE_RATE = 3000; // Max 3000 steps/sec change per second
 
 // DRV8825 pulse width
 const uint8_t STEP_PULSE_US = 6;
@@ -59,8 +59,7 @@ RunState state = IDLE;
 
 bool nextRunForward = true;
 
-uint16_t targetStepsPerSec = 2000;     // Initial target at ramp-up start
-uint16_t currentStepsPerSec = 2000;    // Current commanded speed (filtered/rate-limited)
+uint16_t targetStepsPerSec = 2000;     // Target speed (filtered from pot)
 uint16_t rampDownStartRate = 0;        // Captured instantaneous rate at ramp-down start
 uint32_t plannedRunMs = 8000;          // Latched runtime at start
 
@@ -71,7 +70,8 @@ uint32_t lastSpeedReadMs = 0;          // Last time we read the speed pot
 
 uint64_t accumUnits = 0;               // DDS accumulator
 
-// Speed filtering
+// Speed filtering - simple moving average
+uint32_t speedAccumulator = 0;         // Running sum for average
 uint16_t speedHistory[SPEED_FILTER_SAMPLES];
 uint8_t speedHistoryIndex = 0;
 bool speedHistoryFilled = false;
@@ -127,8 +127,8 @@ struct DebouncedButton {
 DebouncedButton btnStart;
 DebouncedButton btnReverse;
 
-// Read speed pot with basic averaging
-uint16_t readSpeedFromPot() {
+// Read speed pot with basic averaging (BLOCKING - only use at start)
+uint16_t readSpeedFromPotBlocking() {
   uint32_t sum = 0;
   const uint8_t samples = 10;
   for (uint8_t i = 0; i < samples; i++) {
@@ -145,7 +145,19 @@ uint16_t readSpeedFromPot() {
   return (uint16_t)rate;
 }
 
-// Read runtime from pot on A3
+// Read speed pot - SINGLE SAMPLE, non-blocking
+uint16_t readSpeedFromPotFast() {
+  uint16_t v = analogRead(PIN_POT); // Single read, ~100us
+
+  uint32_t rate = (uint32_t)POT_MIN_STEPS_PER_SEC +
+                  ((uint32_t)(POT_MAX_STEPS_PER_SEC - POT_MIN_STEPS_PER_SEC) * v) / 1023UL;
+
+  if (rate < MIN_STEPS_PER_SEC) rate = MIN_STEPS_PER_SEC;
+  if (rate > 65000) rate = 65000;
+  return (uint16_t)rate;
+}
+
+// Read runtime from pot on A3 (BLOCKING - only at start)
 uint32_t readRuntimeFromPot() {
   uint32_t sum = 0;
   const uint8_t samples = 10;
@@ -163,6 +175,7 @@ uint32_t readRuntimeFromPot() {
 
 // Initialize speed filter with a value
 void initSpeedFilter(uint16_t initialSpeed) {
+  speedAccumulator = (uint32_t)initialSpeed * SPEED_FILTER_SAMPLES;
   for (uint8_t i = 0; i < SPEED_FILTER_SAMPLES; i++) {
     speedHistory[i] = initialSpeed;
   }
@@ -170,21 +183,20 @@ void initSpeedFilter(uint16_t initialSpeed) {
   speedHistoryFilled = true;
 }
 
-// Add sample to moving average filter
+// Add sample to moving average filter - OPTIMIZED
 uint16_t filterSpeed(uint16_t newSpeed) {
+  // Subtract oldest value from accumulator
+  speedAccumulator -= speedHistory[speedHistoryIndex];
+  
+  // Add new value
   speedHistory[speedHistoryIndex] = newSpeed;
+  speedAccumulator += newSpeed;
+  
   speedHistoryIndex = (speedHistoryIndex + 1) % SPEED_FILTER_SAMPLES;
   if (speedHistoryIndex == 0) speedHistoryFilled = true;
 
-  // Calculate average
-  uint32_t sum = 0;
-  uint8_t count = speedHistoryFilled ? SPEED_FILTER_SAMPLES : speedHistoryIndex;
-  if (count == 0) return newSpeed;
-  
-  for (uint8_t i = 0; i < count; i++) {
-    sum += speedHistory[i];
-  }
-  return (uint16_t)(sum / count);
+  // Return average
+  return (uint16_t)(speedAccumulator / SPEED_FILTER_SAMPLES);
 }
 
 // Apply rate limiting to speed changes
@@ -204,6 +216,7 @@ uint16_t rateLimitSpeed(uint16_t target, uint16_t current, uint32_t dtMs) {
 }
 
 // Update target speed from pot during cruise (called periodically)
+// NON-BLOCKING - single fast ADC read
 void updateTargetSpeed(uint32_t nowMs) {
   if (state != CRUISE) return;
   if (nowMs - lastSpeedReadMs < SPEED_READ_INTERVAL_MS) return;
@@ -211,8 +224,8 @@ void updateTargetSpeed(uint32_t nowMs) {
   uint32_t dtMs = nowMs - lastSpeedReadMs;
   lastSpeedReadMs = nowMs;
   
-  // Read new speed from pot
-  uint16_t rawSpeed = readSpeedFromPot();
+  // FAST single sample read (~100us)
+  uint16_t rawSpeed = readSpeedFromPotFast();
   
   // Apply moving average filter
   uint16_t filteredSpeed = filterSpeed(rawSpeed);
@@ -249,8 +262,7 @@ uint16_t instantaneousRateNow(uint32_t nowMs) {
 }
 
 void beginRun() {
-  targetStepsPerSec = readSpeedFromPot();
-  currentStepsPerSec = targetStepsPerSec;
+  targetStepsPerSec = readSpeedFromPotBlocking();  // Blocking read at start is fine
   plannedRunMs = readRuntimeFromPot();
   
   // Initialize speed filter with starting speed
@@ -307,7 +319,7 @@ uint16_t commandedRate() {
     }
 
     case CRUISE: {
-      // Update target speed from pot (with filtering)
+      // Update target speed from pot (non-blocking single read)
       updateTargetSpeed(nowMs);
       
       // Start ramp-down automatically so planned run time includes ramp-down.
@@ -385,16 +397,3 @@ void loop() {
     stepBothOnce();
   }
 }
-```
-
-## Key Features Added:
-
-### **1. Multi-Layer Noise Filtering:**
-- **Moving average filter** (5 samples) - smooths out electrical noise spikes
-- **Rate limiting** (2000 steps/sec² max change) - prevents sudden jerks from pot movements
-- **Periodic sampling** (every 50ms) - reduces ADC noise impact
-
-### **2. How It Works:**
-```
-Raw Pot → Moving Average → Rate Limiter → Motor Speed
-  (noisy)    (smoothed)      (gradual)     (smooth)
