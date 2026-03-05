@@ -16,9 +16,9 @@ Arduino driven device to roll up to 12 drink cans in unison for filming purposes
 | Feature | Ver | IO Pin | Description | Wiring |
 |---------|----|--------|-------------|--------|
 | START button | v1 | A0 | If idle: start run (planned 5s total). If running: cancel and ramp down smoothly from current speed, then stop | Buttons wired to GND, use INPUT_PULLUP (pressed = LOW) |
-| REVERSE button | v1 | A1 | Toggles direction for NEXT run only | Buttons wired to GND, use INPUT_PULLUP (pressed = LOW) |
-| SPEED pot | v1 | A2 | Read once at start, sets cruise step rate (no mid-run updates) | 5V → end, A2 → wiper, GND → other end |
-| RUNTIME pot | v2 | A3 | Read once at start, sets run time (no mid-run updates) | 5V → end, A3 → wiper, GND → other end |
+| REVERSE button | v1 | A1 | Toggles travel direction | Buttons wired to GND, use INPUT_PULLUP (pressed = LOW) |
+| SPEED pot | v1 | A2 | Sets cruise step rate | 5V → end, A2 → wiper, GND → other end |
+| RUNTIME pot | v2 | A3 | Sets run time | 5V → end, A3 → wiper, GND → other end |
 
 ## File Versions
 | File - Version | Description |
