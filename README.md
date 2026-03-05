@@ -57,6 +57,88 @@ So:
 	• Arduino code only needs to drive X
 	• A direction reversed owing to mounting
 
+## DRV8825 Current Setting Documentation
+### Configuration:
+#### Stepper Motor: HANPOSE 17HS4401-S
+• Rated Current: 1.7A per phase<br>
+• Holding Torque: 40 N·cm (0.4 N·m)<br>
+• Type: 4-lead bipolar<br>
+
+#### DRV8825 Driver:
+Vref measured (from pot centre arm to Gnd): 0.7V<br>
+Current sense resistors: 0.1Ω (standard on most DRV8825 boards)
+
+### Calculated Current Output:
+Using the DRV8825 formula:<br>
+Current Limit = Vref / (8 × Rs)<br>
+Where:<br>
+• Vref = 0.7V (your measurement)<br>
+• Rs = 0.1Ω (sense resistor value)<br>
+
+Current = 0.7V / (8 × 0.1Ω) = 0.875A
+
+### Analysis:
+✅ Safe Configuration
+The motor is rated for 1.7A, and we're running it at 0.875A (≈51% of rated current).<br>
+Pros:<br>
+• Motors run cooler<br>
+• Reduced risk of overheating<br>
+• Longer motor life<br>
+• Adequate torque for most applications<br>
+
+Cons:<br>
+• Not using full torque potential<br>
+• May skip steps under heavy load<br>
+
+### Current Setting Options:
+#### Option 1: Keep Current Setting (Recommended for your application)
+Vref = 0.7V → 0.875A
+
+Good for belt-driven systems with moderate load<br>
+Cooler operation<br>
+Rolling cans shouldn't require full torque
+
+#### Option 2: Increase to 70% rated current
+Target: 1.19A<br>
+Vref = Current × 8 × Rs<br>
+Vref = 1.19 × 8 × 0.1 = 0.952V<br>
+Adjust pot to 0.95V for more torque reserve<br>
+
+#### Option 3: Maximum safe current (80% rated)<br>
+Target: 1.36A<br>
+Vref = 1.36 × 8 × 0.1 = 1.088V<br>
+Adjust pot to ≈1.1V for maximum torque<br>
+
+Warning: Motors will run hotter<br>
+May need heatsinks or active cooling<br>
+
+### Recommended Setting for this application:
+Keep at 0.7V (0.875A) unless we experience:<br>
+• Belt slipping under load<br>
+• Motors skipping steps<br>
+• Insufficient torque to move cans smoothly<br>
+
+If you need more torque, increase to 0.85-0.95V (1.06-1.19A) and monitor motor temperature.
+
+### How to Adjust (if needed):
+Power off system<br>
+Locate tiny potentiometer on DRV8825<br>
+Connect multimeter:<br>
+Black probe → GND<br>
+Red probe → metal screwdriver touching pot wiper<br>
+
+Power on (no motor movement needed)<br>
+Turn pot slowly while monitoring voltage<br>
+Clockwise = increase, Counter-clockwise = decrease<br>
+Power off before removing multimeter<br>
+
+### Temperature Check:
+After running for 5-10 minutes, motors should be:<br>
+• Warm to touch: Normal (40-50°C)<br>
+• Hot but holdable (2+ seconds): Acceptable (50-70°C)<br>
+• Too hot to hold: Too high (>70°C) - reduce current<br>
+
+Your 0.7V setting should keep motors comfortably warm, not hot.
 
 ## Pulley Specs
 
