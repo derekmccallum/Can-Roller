@@ -157,7 +157,7 @@ We're actually using 1.5kΩ resistor which is fine.<br>
 
 ### Why This Works:
 • The capacitor forms a low-pass filter that removes high-frequency electrical noise<br>
-• Your code already averages 10 samples, so the capacitor won't make the response too sluggish<br>
+• The code already averages 10 samples, so the capacitor won't make the response too sluggish<br>
 • Ceramic caps are non-polarized, so orientation doesn't matter<br>
 
 ### What's the Point of the 1kΩ Resistor?
@@ -174,7 +174,8 @@ More Predictable Filtering: Without the resistor, the filter behavior depends on
 Reduces High-Frequency Noise: The resistor limits current spikes when the cap charges/discharges, providing cleaner filtering.<br>
 
 
-## Pulley Specs
+## Appendix
+### Pulley Specs
 
 20T pulley
 Belt per rev: 40 mm
