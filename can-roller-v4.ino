@@ -55,13 +55,16 @@ const uint8_t STEP_PULSE_US = 6;
 // Debounce
 const uint16_t DEBOUNCE_MS = 30;
 
+// Reverse direction pause between ramp-down and restart
+const uint16_t REVERSE_RESTART_DELAY_MS = 130;
+
 // State machine
 enum RunState : uint8_t { IDLE, RAMP_UP, CRUISE, RAMP_DOWN };
 RunState state = IDLE;
 
 bool nextRunForward = true;
 bool reverseRestartPending = false;     // Reverse pressed while running; waiting to finish ramp-down
-bool reverseWaitActive = false;         // 300ms pause after direction toggle before restart
+bool reverseWaitActive = false;         // Pause after direction toggle before restart
 uint32_t reverseWaitStartMs = 0;
 
 uint16_t targetStepsPerSec = 2000;     // Target speed (filtered from pot)
@@ -375,7 +378,7 @@ void setup() {
 void loop() {
   // Handle delayed restart after reverse-while-running workflow
   if (reverseWaitActive) {
-    if (millis() - reverseWaitStartMs >= 300) {
+    if (millis() - reverseWaitStartMs >= REVERSE_RESTART_DELAY_MS) {
       reverseWaitActive = false;
       beginRun();
     } else {
@@ -385,7 +388,7 @@ void loop() {
 
   // Reverse behavior:
   // - if idle: toggle direction for next run
-  // - if running: ramp down, toggle, pause 300ms, then restart
+  // - if running: ramp down, toggle, pause, then restart
   if (btnReverse.pressedEvent()) {
     if (state == IDLE) {
       nextRunForward = !nextRunForward;
