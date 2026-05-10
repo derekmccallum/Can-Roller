@@ -5,7 +5,7 @@
       * if running: cancel and ramp down smoothly from CURRENT speed, then stop
   - REVERSE button (A1):
       * if idle: toggles direction for NEXT run only
-      * if running: ramp down, toggle direction, wait 0.3s, then ramp up again
+      * if running: ramp down, toggle direction, wait for period defined in REVERSE_RESTART_DELAY_MS, then ramp up again
   - SPEED pot (A2): continuously read during run with filtering for smooth speed changes
   - RUNTIME pot (A3): read once at start, sets run duration 3-10 seconds
   - Soft start/stop: 0.5s ramp up / 0.5s ramp down
