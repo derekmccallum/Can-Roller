@@ -4,7 +4,7 @@ Arduino-driven device to roll up to 12 drink cans in unison for filming.
 
 ## Active file
 
-Edit **`can-roller-v4.ino`** — that is the current, actively developed version. Earlier versions (v1–v3) are historical snapshots in the same repo.
+Edit **`can-roller-v5.ino`** — that is the current, actively developed version. Earlier versions (v1–v4) are historical snapshots in the same repo.
 
 ## Build / flash
 
@@ -23,15 +23,17 @@ No build system (no PlatformIO, Makefile, or CI). Open `.ino` files directly in 
 
 ## Key design patterns
 
-- **State machine**: `IDLE → RAMP_UP → CRUISE → RAMP_DOWN` (RunState enum in `can-roller-v4.ino:62`)
-- **DDS stepping**: Phase-accumulator in `loop()` for smooth, low-jitter pulses (`can-roller-v4.ino:422-431`)
-- **Button debouncing**: `DebouncedButton` struct with 30ms debounce window (`can-roller-v4.ino:104-133`); buttons are active-low (INPUT_PULLUP, pressed = LOW)
-- **Speed filtering**: 8-sample moving average + rate limiter (3000 steps/s² max change) (`can-roller-v4.ino:44-50`)
+- **State machine**: `IDLE → RAMP_UP → CRUISE → RAMP_DOWN` (RunState enum in `can-roller-v5.ino:61`)
+- **DDS stepping**: Phase-accumulator in `loop()` for smooth, low-jitter pulses (`can-roller-v5.ino:416-425`)
+- **Button debouncing**: `DebouncedButton` struct with 30ms debounce window (`can-roller-v5.ino:101-130`); buttons are active-low (INPUT_PULLUP, pressed = LOW)
+- **Speed filtering**: 8-sample moving average + rate limiter (3000 steps/s² max change) (`can-roller-v5.ino:44-49`)
 - **Ramp profile**: 500ms ramp up / 500ms ramp down, with runtime adjusted so total = planned duration + ramp-down
 
-## v4-specific behavior (reverse-while-running)
+## v5-specific behavior
 
 Pressing REVERSE during a run: ramp down, toggle direction, wait 130ms (`REVERSE_RESTART_DELAY_MS`), then ramp back up. REVERSE while idle toggles direction for next run only.
+
+Code drives only `X_STEP` and `X_DIR`. The CNC shield jumper carries those signals to A, so `A_STEP` and `A_DIR` are left unconfigured.
 
 ## Documentation
 
