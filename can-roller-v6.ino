@@ -95,6 +95,7 @@ uint32_t selectedStepsPerCanRev = 0;
 uint32_t targetRunSteps = 0;           // Minimum total pulses before the aligned stop is allowed
 uint32_t stepsThisRun = 0;             // Total emitted pulses since original START
 int32_t positionSteps = 0;             // Signed position from original START
+uint32_t posModRev = 0;                // positionSteps % selectedStepsPerCanRev, maintained without division
 bool positionStopActive = false;       // Normal planned stop should land on an aligned position
 bool aligningToPositionStop = false;   // Current ramp-down is the planned aligned stop
 
@@ -151,13 +152,8 @@ uint32_t alignedTargetSteps(uint16_t cruiseRate, uint32_t runtimeMs, uint32_t st
 
 uint32_t stepsToNextAlignedPosition() {
   if (selectedStepsPerCanRev == 0) return 0;
-
-  int32_t rev = (int32_t)selectedStepsPerCanRev;
-  int32_t pos = positionSteps % rev;
-  if (pos < 0) pos += rev;
-
-  if (pos == 0) return 0;
-  return nextRunForward ? (uint32_t)(rev - pos) : (uint32_t)pos;
+  if (posModRev == 0) return 0;
+  return nextRunForward ? (selectedStepsPerCanRev - posModRev) : posModRev;
 }
 
 uint32_t remainingAlignedStopSteps() {
@@ -365,6 +361,7 @@ void beginRun() {
   targetRunSteps = alignedTargetSteps(targetStepsPerSec, plannedRunMs, selectedStepsPerCanRev);
   stepsThisRun = 0;
   positionSteps = 0;
+  posModRev = 0;
   positionStopActive = true;
   aligningToPositionStop = false;
 
@@ -554,7 +551,13 @@ void loop() {
     accumUnits -= 1000000ULL;
     stepOnce();
     stepsThisRun++;
-    positionSteps += nextRunForward ? 1 : -1;
+    if (nextRunForward) {
+      positionSteps++;
+      if (++posModRev >= selectedStepsPerCanRev) posModRev = 0;
+    } else {
+      positionSteps--;
+      posModRev = (posModRev == 0) ? selectedStepsPerCanRev - 1 : posModRev - 1;
+    }
   }
 
   if (positionStopActive && !reverseRestartPending && remainingAlignedStopSteps() == 0) {
