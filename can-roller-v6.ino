@@ -160,6 +160,10 @@ uint32_t remainingAlignedStopSteps() {
   if (!positionStopActive) return 0;
   if (selectedStepsPerCanRev == 0) return 0;
 
+  // Fast path: clearly more than one rotation away from target — skip division entirely.
+  if (stepsThisRun + selectedStepsPerCanRev < targetRunSteps)
+    return targetRunSteps - stepsThisRun;
+
   uint32_t toAligned = stepsToNextAlignedPosition();
   uint32_t minRemaining = (stepsThisRun < targetRunSteps) ? (targetRunSteps - stepsThisRun) : 0;
   if (toAligned >= minRemaining) return toAligned;
@@ -439,10 +443,13 @@ uint16_t commandedRate() {
       // Update target speed from pot (non-blocking single read)
       updateTargetSpeed(nowMs);
 
-      uint32_t remaining = remainingAlignedStopSteps();
-      if (positionStopActive && remaining <= rampStepEstimate(targetStepsPerSec)) {
-        beginRampDownFromCurrent(remaining > 0);
-        return targetStepsPerSec;
+      // Gate on step count first — avoids any division overhead during the vast majority of the run.
+      if (positionStopActive && stepsThisRun + 3000UL >= targetRunSteps) {
+        uint32_t remaining = remainingAlignedStopSteps();
+        if (remaining <= rampStepEstimate(targetStepsPerSec)) {
+          beginRampDownFromCurrent(remaining > 0);
+          return targetStepsPerSec;
+        }
       }
 
       return targetStepsPerSec;
@@ -450,7 +457,7 @@ uint16_t commandedRate() {
 
     case RAMP_DOWN: {
       uint32_t t = nowMs - phaseStartMs;
-      if (aligningToPositionStop && remainingAlignedStopSteps() == 0) {
+      if (aligningToPositionStop && stepsThisRun >= targetRunSteps && posModRev == 0) {
         endRun();
         return 0;
       }
@@ -560,7 +567,7 @@ void loop() {
     }
   }
 
-  if (positionStopActive && !reverseRestartPending && remainingAlignedStopSteps() == 0) {
+  if (positionStopActive && !reverseRestartPending && stepsThisRun >= targetRunSteps && posModRev == 0) {
     endRun();
     accumUnits = 0;
   }
