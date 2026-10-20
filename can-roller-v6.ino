@@ -551,19 +551,14 @@ void loop() {
   accumUnits += (uint64_t)rate * (uint64_t)dtUs;
 
   while (accumUnits >= 1000000ULL) {
-    if (positionStopActive && !reverseRestartPending && remainingAlignedStopSteps() == 0) {
-      endRun();
-      accumUnits = 0;
-      break;
-    }
     accumUnits -= 1000000ULL;
     stepOnce();
     stepsThisRun++;
     positionSteps += nextRunForward ? 1 : -1;
-    if (positionStopActive && !reverseRestartPending && remainingAlignedStopSteps() == 0) {
-      endRun();
-      accumUnits = 0;
-      break;
-    }
+  }
+
+  if (positionStopActive && !reverseRestartPending && remainingAlignedStopSteps() == 0) {
+    endRun();
+    accumUnits = 0;
   }
 }
