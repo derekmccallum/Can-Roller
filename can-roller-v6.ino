@@ -442,8 +442,9 @@ uint16_t commandedRate() {
       // Update target speed from pot (non-blocking single read)
       updateTargetSpeed(nowMs);
 
-      if (positionStopActive && remainingAlignedStopSteps() <= rampStepEstimate(targetStepsPerSec)) {
-        beginRampDownFromCurrent(true);
+      uint32_t remaining = remainingAlignedStopSteps();
+      if (positionStopActive && remaining <= rampStepEstimate(targetStepsPerSec)) {
+        beginRampDownFromCurrent(remaining > 0);
         return targetStepsPerSec;
       }
 
@@ -549,11 +550,11 @@ void loop() {
 
   accumUnits += (uint64_t)rate * (uint64_t)dtUs;
 
-  if (accumUnits >= 1000000ULL) {
+  while (accumUnits >= 1000000ULL) {
     if (positionStopActive && !reverseRestartPending && remainingAlignedStopSteps() == 0) {
       endRun();
       accumUnits = 0;
-      return;
+      break;
     }
     accumUnits -= 1000000ULL;
     stepOnce();
@@ -562,6 +563,7 @@ void loop() {
     if (positionStopActive && !reverseRestartPending && remainingAlignedStopSteps() == 0) {
       endRun();
       accumUnits = 0;
+      break;
     }
   }
 }
