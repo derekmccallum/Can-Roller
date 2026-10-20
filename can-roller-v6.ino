@@ -11,9 +11,9 @@
   - RUNTIME pot (A3): read once at start, sets run duration 3-10 seconds
   - CAN SIZE switch (A4/A5): centre = 400 ml standard can (66.04 mm),
       A4 closed to GND = 250 ml slim can (53 mm),
-      A5 closed to GND = third can size option
+      A5 closed to GND = time-based stop (no rotation alignment, v5 behaviour)
   - Position-aligned stop: planned runs stop after a whole number of selected-can rotations
-    relative to the original START position, even after an in-run reverse
+    relative to the original START position, even after an in-run reverse (disabled in A5 position)
   - Soft start/stop: 0.5s ramp up / 0.5s ramp down
   - DDS/phase-accumulator stepping (smooth, low jitter)
   - Real-time speed adjustment with non-blocking reads
@@ -115,7 +115,7 @@ bool speedHistoryFilled = false;
 // ---- helpers ----
 uint32_t selectedCanDiameterFromSwitch() {
   if (digitalRead(PIN_CAN_SIZE_SLIM) == LOW) return CAN_DIAMETER_SLIM_UM;
-  if (digitalRead(PIN_CAN_SIZE_OPTION_3) == LOW) return CAN_DIAMETER_OPTION_3_UM;
+  if (digitalRead(PIN_CAN_SIZE_OPTION_3) == LOW) return 0;  // 0 = time-based stop, no alignment
   return CAN_DIAMETER_STANDARD_UM;
 }
 
@@ -361,12 +361,18 @@ void beginRun() {
   targetStepsPerSec = readSpeedFromPotBlocking();  // Blocking read at start is fine
   plannedRunMs = readRuntimeFromPot();
   selectedCanDiameterUm = selectedCanDiameterFromSwitch();
-  selectedStepsPerCanRev = stepsPerCanRev(selectedCanDiameterUm);
-  targetRunSteps = alignedTargetSteps(targetStepsPerSec, plannedRunMs, selectedStepsPerCanRev);
+  if (selectedCanDiameterUm == 0) {
+    selectedStepsPerCanRev = 0;
+    targetRunSteps = 0;
+    positionStopActive = false;
+  } else {
+    selectedStepsPerCanRev = stepsPerCanRev(selectedCanDiameterUm);
+    targetRunSteps = alignedTargetSteps(targetStepsPerSec, plannedRunMs, selectedStepsPerCanRev);
+    positionStopActive = true;
+  }
   stepsThisRun = 0;
   positionSteps = 0;
   posModRev = 0;
-  positionStopActive = true;
   aligningToPositionStop = false;
 
   // Initialize speed filter with starting speed
@@ -448,6 +454,14 @@ uint16_t commandedRate() {
         uint32_t remaining = remainingAlignedStopSteps();
         if (remaining <= rampStepEstimate(targetStepsPerSec)) {
           beginRampDownFromCurrent(remaining > 0);
+          return targetStepsPerSec;
+        }
+      } else if (!positionStopActive) {
+        // A5 switch position: time-based stop, same as v5
+        uint32_t elapsed = nowMs - runStartMs;
+        uint32_t cruiseUntil = (plannedRunMs > RAMP_MS) ? (plannedRunMs - RAMP_MS) : 0;
+        if (elapsed >= cruiseUntil) {
+          beginRampDownFromCurrent(false);
           return targetStepsPerSec;
         }
       }
