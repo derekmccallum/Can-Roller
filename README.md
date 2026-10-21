@@ -7,6 +7,7 @@ Arduino driven device to roll up to 12 drink cans in unison for filming purposes
 - 1 x Arduino CNC shield v3 with DRV8825 motor drivers
 - 1 x Elegoo Uno R3
 - 2 x HANPOSE 17HS4401-S 40mm Nema 17 Stepper Motor 42 Motor 42BYGH 1.7A 40N.cm 4-lead Motor
+- 2 x GT2 Drive Pulley 20 Teeth
 - 2 x GT2 2mm Pitch 6mm Width Closed Loop Synchronous Timing Belt 750 teeth 1500mm
 - 2 x Machifit GT2 Timing Pulley 20 Teeth Synchronous Wheel Inner Diameter 5mm for 6mm Width Belt
 - 4 x GT2 Idler Pulley 20 Teeth
