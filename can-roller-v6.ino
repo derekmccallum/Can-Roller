@@ -14,7 +14,7 @@
       A5 closed to GND = time-based stop (no rotation alignment, v5 behaviour)
   - Position-aligned stop: planned runs stop after a whole number of selected-can rotations
     relative to the original START position, even after an in-run reverse (disabled in A5 position)
-  - Soft start/stop: 0.5s ramp up / 0.5s ramp down
+  - Soft start/stop: 0.5s ramp up / 0.5s ramp down (1.0s for slim can to reduce belt slip)
   - DDS/phase-accumulator stepping (smooth, low jitter)
   - Real-time speed adjustment with non-blocking reads
 
@@ -39,6 +39,7 @@ const uint8_t PIN_CAN_SIZE_OPTION_3 = A5;
 
 // Timing / profile
 const uint16_t RAMP_MS = 500;
+const uint16_t RAMP_MS_SLIM = 1000;  // Gentler ramp for slim can; reduces belt slip at high speed
 const uint16_t MIN_STEPS_PER_SEC = 200;
 
 // Runtime mapping (milliseconds)
@@ -91,6 +92,7 @@ uint16_t rampDownStartRate = 0;        // Captured instantaneous rate at ramp-do
 uint32_t plannedRunMs = 8000;          // Latched runtime at start
 
 uint32_t selectedCanDiameterUm = CAN_DIAMETER_STANDARD_UM;
+uint16_t activeRampMs = RAMP_MS;
 uint32_t selectedStepsPerCanRev = 0;
 uint32_t targetRunSteps = 0;           // Minimum total pulses before the aligned stop is allowed
 uint32_t stepsThisRun = 0;             // Total emitted pulses since original START
@@ -127,11 +129,11 @@ uint32_t stepsPerCanRev(uint32_t diameterUm) {
 }
 
 uint32_t rampStepEstimate(uint16_t fromRate) {
-  return (uint32_t)((((uint64_t)fromRate + MIN_STEPS_PER_SEC) * RAMP_MS + 1000ULL) / 2000ULL);
+  return (uint32_t)((((uint64_t)fromRate + MIN_STEPS_PER_SEC) * activeRampMs + 1000ULL) / 2000ULL);
 }
 
 uint32_t plannedStepEstimate(uint16_t cruiseRate, uint32_t runtimeMs) {
-  uint32_t cruiseMs = (runtimeMs > (2UL * RAMP_MS)) ? (runtimeMs - (2UL * RAMP_MS)) : 0;
+  uint32_t cruiseMs = (runtimeMs > (2UL * activeRampMs)) ? (runtimeMs - (2UL * activeRampMs)) : 0;
   uint64_t total = (uint64_t)rampStepEstimate(cruiseRate) * 2ULL;
   total += ((uint64_t)cruiseRate * cruiseMs + 500ULL) / 1000ULL;
   if (total > 0xFFFFFFFFULL) return 0xFFFFFFFFUL;
@@ -338,17 +340,17 @@ uint16_t instantaneousRateNow(uint32_t nowMs) {
   switch (state) {
     case RAMP_UP: {
       uint32_t t = nowMs - phaseStartMs;
-      if (t >= RAMP_MS) return targetStepsPerSec;
-      return lerp_u16(MIN_STEPS_PER_SEC, targetStepsPerSec, t, RAMP_MS);
+      if (t >= activeRampMs) return targetStepsPerSec;
+      return lerp_u16(MIN_STEPS_PER_SEC, targetStepsPerSec, t, activeRampMs);
     }
     case CRUISE:
       return targetStepsPerSec;
 
     case RAMP_DOWN: {
-      // ramp from rampDownStartRate -> MIN over RAMP_MS
+      // ramp from rampDownStartRate -> MIN over activeRampMs
       uint32_t t = nowMs - phaseStartMs;
-      if (t >= RAMP_MS) return 0;
-      return lerp_u16(MIN_STEPS_PER_SEC, rampDownStartRate, (RAMP_MS - t), RAMP_MS);
+      if (t >= activeRampMs) return 0;
+      return lerp_u16(MIN_STEPS_PER_SEC, rampDownStartRate, (activeRampMs - t), activeRampMs);
     }
 
     case IDLE:
@@ -361,6 +363,7 @@ void beginRun() {
   targetStepsPerSec = readSpeedFromPotBlocking();  // Blocking read at start is fine
   plannedRunMs = readRuntimeFromPot();
   selectedCanDiameterUm = selectedCanDiameterFromSwitch();
+  activeRampMs = (selectedCanDiameterUm == CAN_DIAMETER_SLIM_UM) ? RAMP_MS_SLIM : RAMP_MS;
   if (selectedCanDiameterUm == 0) {
     selectedStepsPerCanRev = 0;
     targetRunSteps = 0;
@@ -436,13 +439,13 @@ uint16_t commandedRate() {
   switch (state) {
     case RAMP_UP: {
       uint32_t t = nowMs - phaseStartMs;
-      if (t >= RAMP_MS) {
+      if (t >= activeRampMs) {
         state = CRUISE;
         phaseStartMs = nowMs;
         lastSpeedReadMs = nowMs;  // Reset speed read timer
         return targetStepsPerSec;
       }
-      return lerp_u16(MIN_STEPS_PER_SEC, targetStepsPerSec, t, RAMP_MS);
+      return lerp_u16(MIN_STEPS_PER_SEC, targetStepsPerSec, t, activeRampMs);
     }
 
     case CRUISE: {
@@ -459,7 +462,7 @@ uint16_t commandedRate() {
       } else if (!positionStopActive) {
         // A5 switch position: time-based stop, same as v5
         uint32_t elapsed = nowMs - runStartMs;
-        uint32_t cruiseUntil = (plannedRunMs > RAMP_MS) ? (plannedRunMs - RAMP_MS) : 0;
+        uint32_t cruiseUntil = (plannedRunMs > activeRampMs) ? (plannedRunMs - activeRampMs) : 0;
         if (elapsed >= cruiseUntil) {
           beginRampDownFromCurrent(false);
           return targetStepsPerSec;
@@ -475,14 +478,14 @@ uint16_t commandedRate() {
         endRun();
         return 0;
       }
-      if (aligningToPositionStop && t >= RAMP_MS) {
+      if (aligningToPositionStop && t >= activeRampMs) {
         return MIN_STEPS_PER_SEC;
       }
-      if (t >= RAMP_MS) {
+      if (t >= activeRampMs) {
         endRun(reverseRestartPending);
         return 0;
       }
-      return lerp_u16(MIN_STEPS_PER_SEC, rampDownStartRate, (RAMP_MS - t), RAMP_MS);
+      return lerp_u16(MIN_STEPS_PER_SEC, rampDownStartRate, (activeRampMs - t), activeRampMs);
     }
 
     case IDLE:
