@@ -1,6 +1,6 @@
 # Can-Roller
 
-Arduino driven device to roll up to 12 drink cans in unison for filming purposes
+Motorised rack device to roll up to 12 drink cans in unison for filming purposes
 
 ## Hardware
 
