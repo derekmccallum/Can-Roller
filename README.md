@@ -7,9 +7,9 @@ Arduino driven device to roll up to 12 drink cans in unison for filming purposes
 - 1 x Arduino CNC shield v3 with DRV8825 motor drivers
 - 1 x Elegoo Uno R3
 - 2 x HANPOSE 17HS4401-S 40mm Nema 17 Stepper Motor 42 Motor 42BYGH 1.7A 40N.cm 4-lead Motor
-- 2 x GT2 2mm Pitch 6mm Width Closed Loop Synchronous Timing Belt 750 teeth 1500mm
 - 2 x Machifit GT2 Timing Pulley 20 Teeth Synchronous Wheel Inner Diameter 5mm for 6mm Width Belt
 - 4 x GT2 Idler Pulley 20 Teeth
+- 2 x GT2 2mm Pitch 6mm Width Closed Loop Synchronous Timing Belt 750 teeth 1500mm
 
 ## Control Input Features
 
@@ -19,6 +19,7 @@ Arduino driven device to roll up to 12 drink cans in unison for filming purposes
 | REVERSE button | v1 | A1 | Toggles travel direction | Buttons wired to GND, use INPUT_PULLUP (pressed = LOW) |
 | SPEED pot | v1 | A2 | Sets cruise step rate | 5V → end, A2 → wiper, GND → other end |
 | RUNTIME pot | v2 | A3 | Sets run time | 5V → end, A3 → wiper, GND → other end |
+| CAN SIZE switch | v6 | A4/A5 | Selects can diameter for position-aligned stop, or disables alignment entirely. Centre = 400 ml standard (66.04 mm). A4 = 250 ml slim (53 mm). A5 = time-based stop (no rotation alignment, v5 behaviour) | 3-position centre-off switch, common to GND |
 
 ## File Versions
 | File - Version | Description |
@@ -27,7 +28,8 @@ Arduino driven device to roll up to 12 drink cans in unison for filming purposes
 | can-roller-v2.ino | **New Feature: Variable Runtime Control**<br>- Added **RUNTIME pot** on analog pin **A3** for adjustable run duration (3-10 seconds)<br>- Runtime is read and latched when START button is pressed<br>- Replaces fixed 8-second duration from Version 1<br><br>**Hardware Change:**<br>- Add potentiometer to A3 (wired same as other pots: 5V → end, A3 → wiper, GND → other end)<br><br>**Control Summary:**<br>**A0**: START button - starts run or cancels mid-run<br>**A1**: REVERSE button - toggles direction for next run<br>**A2**: SPEED pot - read once at start, sets cruise (1000-9500 steps/sec)<br>**A3**: RUNTIME pot - sets run duration (3-10 seconds) ⭐ NEW<br><br>All other features unchanged: 0.5s soft start/stop, DDS stepping, smooth cancellation. |
 | can-roller-v3.ino | **New Feature: Cruise speed variation during runtime**<br>1. Multi-Layer Noise Filtering:<br>Implemented moving average filter (5 samples) - smooths out electrical noise spikes<br>Rate limiting (2000 steps/sec² max change) - prevents sudden jerks from pot movements<br>Periodic sampling (every 50ms) - reduces ADC noise impact.<br><br>2. How It Works:<br>Raw Pot → Moving Average → Rate Limiter → Motor Speed<br>  (noisy)    (smoothed)      (gradual)     (smooth)<br><br>**Control Summary:**<br>**A0**: START button - starts run or cancels mid-run<br>**A1**: REVERSE button - toggles direction for next run<br>**A2**: SPEED pot - sets cruise (1000-9500 steps/sec)<br>**A3**: RUNTIME pot - sets run duration (3-10 seconds)<br><br>All other features unchanged: 0.5s soft start/stop, DDS stepping, smooth cancellation. |
 | can-roller-v4.ino | **New Feature: Dynamic reverse while running**<br>- REVERSE button behavior updated on **A1**:<br>&nbsp;&nbsp;&nbsp;&nbsp;* If idle: toggles direction for the next run only<br>&nbsp;&nbsp;&nbsp;&nbsp;* If running: performs normal ramp-down, toggles direction, waits a defined period, then restarts with normal ramp-up<br>- START button behavior unchanged: start when idle, graceful cancel when running<br>- SPEED (A2) and RUNTIME (A3) behavior unchanged from v3<br><br>Maintains soft start/stop profile and DDS stepping while adding in-run direction change handling. |
-| can-roller-v5.ino | **Hardware alignment: X-only step and direction drive**<br>- Keeps v4 behavior, including dynamic reverse while running<br>- Drives only **X_STEP** and **X_DIR** in software<br>- Leaves **A_STEP** and **A_DIR** unconfigured because the CNC shield jumper electrically ties A to X<br>- Prevents the Arduino from driving two tied output pins at different levels during STEP/DIR changes<br><br>This is the current version when using the A-to-X slave jumper wiring described below. |
+| can-roller-v5.ino | **Hardware alignment: X-only step and direction drive**<br>- Keeps v4 behavior, including dynamic reverse while running<br>- Drives only **X_STEP** and **X_DIR** in software<br>- Leaves **A_STEP** and **A_DIR** unconfigured because the CNC shield jumper electrically ties A to X<br>- Prevents the Arduino from driving two tied output pins at different levels during STEP/DIR changes. |
+| can-roller-v6.ino | **New Feature: Position-aligned stop with 3-position can size selector**<br>- Keeps v5 X-only drive behavior<br>- Counts emitted step pulses and stops planned runs after a whole number of selected-can rotations, so the front label should return to its starting face<br>- Adds a 3-position can size selector on **A4/A5**:<br>&nbsp;&nbsp;&nbsp;&nbsp;* Centre/open: 400 ml standard can, 66.04 mm diameter — position-aligned stop<br>&nbsp;&nbsp;&nbsp;&nbsp;* A4 closed to GND: 250 ml slim can, 53 mm diameter — position-aligned stop<br>&nbsp;&nbsp;&nbsp;&nbsp;* A5 closed to GND: time-based stop, no rotation alignment (identical to v5 behaviour)<br>- RUNTIME and SPEED choose a minimum planned amount of motion; the sketch rounds that up to the next whole can rotation count for the selected diameter (disabled in A5 position)<br>- Mid-run REVERSE preserves the original START position reference: it ramps down, changes direction, then resumes the same planned run and stops on a whole-can-rotation boundary relative to the original label position<br>- Slim can (A4) uses a 1.0 s ramp instead of 0.5 s to prevent belt slip at high speed; tunable via **RAMP_MS_SLIM**<br><br>This is the current version when using the A-to-X slave jumper wiring described below. |
 <img width="1038" alt="CNC Shield v3" src="https://europe1.discourse-cdn.com/arduino/original/4X/c/f/9/cf988326f7e0baaa42da84e9b4440201e97f966a.jpeg" />
 
 ## Power & step config
@@ -36,9 +38,13 @@ Arduino driven device to roll up to 12 drink cans in unison for filming purposes
 Set jumpers MS1 ON, MS2 ON, MS3 OFF → 1600 steps/rev
 
 	• DRV8825 @ 1/8 microstepping ⇒ 1600 steps/rev (200 × 8)
-	• Can diameter ≈ 66 mm ⇒ circumference C ≈ 207.35 mm
+	• Can diameter is selected in v6: 53.00 mm slim (A4), 66.04 mm standard (centre), or time-based stop / no alignment (A5)
 	• GT2 pitch = 2 mm ⇒ belt travel per motor rev = 2 × teeth (mm)
 	• Ideal no-slip rolling (and cans are constrained from translating)
+	• The 250 ml slim can is lighter and sits with less belt contact force; at high speed settings
+	  it slips ~3 mm during ramp-up before gripping. The sketch uses RAMP_MS_SLIM = 1000 ms
+	  (vs RAMP_MS = 500 ms for all other sizes) to halve the peak acceleration and eliminate the
+	  slip. Increase RAMP_MS_SLIM further if a shortfall reappears after belt wear or retensioning.
 
 Motor speed from step rate (independent of pulley teeth):
 	• At 1000 steps/s: motor = 1000/1600 = 0.625 rps
